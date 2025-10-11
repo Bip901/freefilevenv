@@ -1,0 +1,76 @@
+[project]
+name = "freefilevenv"
+version = "0.1.0"
+description = "FreeFileSync wrapper to derive virtual sync settings."
+readme = "README.md"
+authors = [
+    { name = "Bip901", email = "74911767+Bip901@users.noreply.github.com" },
+]
+requires-python = ">=3.11"
+classifiers = [
+    "Topic :: System :: Filesystems",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+    "Typing :: Typed",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "platformdirs>=4.5.0",
+    "pydantic>=2.12.0",
+    "pydantic-xml>=2.18.0",
+    "xmlpatcher>=1.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+    "ruff>=0.14.0",
+]
+
+[project.scripts]
+freefilevenv = "freefilevenv:main"
+
+[project.urls]
+"Homepage" = "https://github.com/Bip901/freefilevenv"
+
+[build-system]
+requires = ["uv_build>=0.8.13,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "F",     # pyflakes
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "RUF",   # ruff
+    "I",     # isort
+    "N",     # pep8-naming
+    "D417",  # pydocstyle: missing argument description
+    "UP",    # pyupgrade
+    "A",     # flake8-builtins
+    "ANN",   # flake8-annotations
+    "ARG",   # flake8-unused-arguments
+    "ASYNC", # flake8-async
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
+    "EXE",   # flake8-executable
+    "INP",   # flake8-no-pep420
+    "LOG",   # flake8-logging
+    "PIE",   # flake8-pie
+    "PTH",   # flake8-use-pathlib
+    "RET",   # flake8-return
+    "SIM",   # flake8-simplify
+    "TC",    # flake8-type-checking
+    "YTT",   # flake8-2020
+] # https://docs.astral.sh/ruff/rules/
+
+[tool.mypy]
+strict = true
