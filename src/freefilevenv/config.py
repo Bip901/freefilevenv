@@ -3,6 +3,7 @@ import sys
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from os.path import expandvars
+from pathlib import Path
 from typing import Self
 
 if sys.version_info >= (3, 12):
@@ -52,17 +53,25 @@ class PatchList(BaseXmlModel):
         yield from (patch.to_xml_patch() for patch in self.patches)
 
 
+class FilePatch(PatchList, tag="patch_file"):
+    path: Path = attr()
+    """The new file path, either absolute or relative to the FreeFileSync app data directory."""
+    new_path: Path = attr()
+    """The new file path, either absolute or relative to the venv directory."""
+    delete_on_shutdown: bool = attr(default=True)
+
+
 class VenvConfig(BaseXmlModel, tag="venv"):
     name: str = attr()
     global_settings_patches: PatchList = element()
+    file_patches: list[FilePatch] = element()
 
 
 class Config(BaseXmlModel, tag="config"):
     default_venv: str | None = element(default=None)
     """The venv to be used when no --venv is specified."""
-    rclone_path: str = element(default="rclone")
     freefilesync_path: str = element()
-    freefilesync_appdata_path: str | None = element(default=None)
+    freefilesync_appdata_path: Path | None = element(default=None)
     venv_configs: list[VenvConfig] = element()
 
     @classmethod
@@ -91,6 +100,7 @@ class Config(BaseXmlModel, tag="config"):
                             ),
                         ]
                     ),
+                    file_patches=[],
                 )
             ],
         )

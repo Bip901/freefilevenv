@@ -5,37 +5,47 @@ import subprocess
 from pathlib import Path
 
 import platformdirs
-from xmlpatcher import XMLDocument
+from xmlpatcher import Transformation, XMLDocument
 
-from .config import Config
+from .config import Config, VenvConfig
 
 config_dir = Path(platformdirs.user_config_dir("freefilevenv", appauthor=False, roaming=True))
 
 VENV_NAME_REGEX = re.compile(r"^[a-zA-Z-_0-9]+$")
 
 
-def launch_freefilesync(config: Config, venv_name: str) -> None:
+def launch_freefilesync(config: Config, venv_config: VenvConfig) -> None:
     freefilesync_path = shutil.which(config.freefilesync_path)
     if freefilesync_path is None:
         raise ValueError(f"Executable not found: {freefilesync_path}")
-    venv_config = next(venv_config for venv_config in config.venv_configs if venv_config.name == venv_name)
-    freefilesync_appdata_path = config.freefilesync_appdata_path or platformdirs.user_config_dir(
-        "FreeFileSync", appauthor=False, roaming=True
+    freefilesync_appdata_dir = config.freefilesync_appdata_path or Path(
+        platformdirs.user_config_dir("FreeFileSync", appauthor=False, roaming=True)
     )
-    global_settings = XMLDocument(Path(freefilesync_appdata_path) / "GlobalSettings.xml")
+    global_settings = XMLDocument(freefilesync_appdata_dir / "GlobalSettings.xml")
     global_settings.patch(*venv_config.global_settings_patches.to_xml_patches())
 
-    venv_dir = config_dir / "venvs" / venv_name
+    venv_dir = config_dir / "venvs" / venv_config.name
     venv_dir.mkdir(parents=True, exist_ok=True)
     config_panel_path = venv_dir / "ConfigPanel.xml"
     print(f"Loading ConfigPanel element from {config_panel_path}")
     global_settings.load_element("/FreeFileSync/MainDialog/ConfigPanel", config_panel_path)
-    # rclone_path = shutil.which(config.rclone_path)
+
+    for file_patch in venv_config.file_patches:
+        original_path = freefilesync_appdata_dir / file_patch.path
+        if not original_path.is_file():
+            raise ValueError(f"Can't patch non-existent file at {file_patch.path}")
+        new_path = venv_dir / file_patch.new_path
+        print(f"Patching {original_path} -> {new_path}")
+        Transformation(original_path, new_path, *file_patch.to_xml_patches()).apply()
+
     with global_settings.save_to_temp_file() as modified_global_settings_path:
         print(f"Launching FreeFileSync with global settings from {modified_global_settings_path}")
         subprocess.run([freefilesync_path, modified_global_settings_path])
         modified_global_settings = XMLDocument(modified_global_settings_path)
         modified_global_settings.save_element("/FreeFileSync/MainDialog/ConfigPanel", config_panel_path)
+        for file_patch in venv_config.file_patches:
+            if file_patch.delete_on_shutdown:
+                (venv_dir / file_patch.new_path).unlink()
 
 
 def main() -> None:
@@ -72,7 +82,9 @@ def main() -> None:
     if not VENV_NAME_REGEX.fullmatch(venv_name):
         print(f"venv name '{venv_name}' must match regex ${VENV_NAME_REGEX.pattern}")
         exit(3)
-    if not any(venv.name == venv_name for venv in config.venv_configs):
+    try:
+        venv_config = next(venv_config for venv_config in config.venv_configs if venv_config.name == venv_name)
+    except StopIteration:
         print(f"venv '{venv_name}' is not defined in configuration file.")
         exit(4)
-    launch_freefilesync(config, venv_name)
+    launch_freefilesync(config, venv_config)
