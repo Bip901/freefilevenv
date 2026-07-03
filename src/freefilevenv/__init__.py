@@ -2,6 +2,7 @@ import argparse
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import platformdirs
@@ -12,6 +13,13 @@ from .config import Config, VenvConfig
 config_dir = Path(platformdirs.user_config_dir("freefilevenv", appauthor=False, roaming=True))
 
 VENV_NAME_REGEX = re.compile(r"^[a-zA-Z-_0-9]+$")
+
+
+def _run_shell_command(command: str) -> None:
+    if sys.platform == "win32":
+        subprocess.run(["pwsh", "-Command", command], check=True)
+    else:
+        subprocess.run(["bash", "-c", command], check=True)
 
 
 def launch_freefilesync(config: Config, venv_config: VenvConfig) -> None:
@@ -38,6 +46,9 @@ def launch_freefilesync(config: Config, venv_config: VenvConfig) -> None:
         print(f"Patching {original_path} -> {new_path}")
         Transformation(original_path, new_path, *file_patch.to_xml_patches()).apply()
 
+    if venv_config.run_before:
+        _run_shell_command(venv_config.run_before)
+
     with global_settings.save_to_temp_file() as modified_global_settings_path:
         print(f"Launching FreeFileSync with global settings from {modified_global_settings_path}")
         subprocess.run([freefilesync_path, modified_global_settings_path])
@@ -46,6 +57,9 @@ def launch_freefilesync(config: Config, venv_config: VenvConfig) -> None:
         for file_patch in venv_config.file_patches:
             if file_patch.delete_on_shutdown:
                 (venv_dir / file_patch.new_path).unlink()
+
+    if venv_config.run_after:
+        _run_shell_command(venv_config.run_after)
 
 
 def main() -> None:

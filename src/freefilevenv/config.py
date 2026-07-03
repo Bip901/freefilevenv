@@ -63,6 +63,10 @@ class FilePatch(PatchList, tag="patch_file"):
 
 class VenvConfig(BaseXmlModel, tag="venv"):
     name: str = attr()
+    run_before: str | None = element(default=None)
+    """A shell command (pwsh for Windows, bash for Linux) to run prior to running FreeFileSync."""
+    run_after: str | None = element(default=None)
+    """A shell command (pwsh for Windows, bash for Linux) to run after running FreeFileSync."""
     global_settings_patches: PatchList = element()
     file_patches: list[FilePatch] = element()
 
