@@ -23,7 +23,7 @@ dependencies = [
     "platformdirs>=4.5.0",
     "pydantic>=2.12.0",
     "pydantic-xml>=2.18.0",
-    "xmlpatcher>=1.0.3",
+    "xmlpatcher>=1.0.4",
     "windows-curses>=2.4.2; sys_platform == 'win32'",
 ]
 
