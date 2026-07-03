@@ -8,6 +8,7 @@ from pathlib import Path
 import platformdirs
 from xmlpatcher import Transformation, XMLDocument
 
+from . import tui
 from .config import Config, VenvConfig
 
 config_dir = Path(platformdirs.user_config_dir("freefilevenv", appauthor=False, roaming=True))
@@ -79,26 +80,32 @@ def main() -> None:
         config_path = Path(args.config)
 
     if not config_path.exists():
-        print("Config file does not exist yet (is this your first run?)")
+        print("Config file does not exist yet (is this your first run?)", file=sys.stderr)
         xml_bytes: bytes = Config.get_default().to_xml(
             pretty_print=True, exclude_none=True, encoding="UTF-8", standalone=True
         )  # type: ignore[assignment]
         config_path.write_bytes(xml_bytes)
-        print(f"Created config file {config_path}")
-        print("Please edit it and run again.")
+        print(f"Created config file {config_path}", file=sys.stderr)
+        print("Please edit it and run again.", file=sys.stderr)
         exit(1)
 
     config = Config.from_xml(config_path.read_bytes())
     venv_name = args.venv or config.default_venv
     if venv_name is None:
-        print("No --venv specified and no default_venv was given in the configuration file.")
-        exit(2)
+        print("No --venv specified and no default_venv was given in the configuration file.", file=sys.stderr)
+        available_names = [venv.name for venv in config.venv_configs]
+        if not available_names:
+            print("No venvs defined in the configuration file.", file=sys.stderr)
+            exit(2)
+        venv_name = tui.select_item(available_names)
+        if venv_name is None:
+            exit(0)
     if not VENV_NAME_REGEX.fullmatch(venv_name):
         print(f"venv name '{venv_name}' must match regex ${VENV_NAME_REGEX.pattern}")
         exit(3)
     try:
         venv_config = next(venv_config for venv_config in config.venv_configs if venv_config.name == venv_name)
     except StopIteration:
-        print(f"venv '{venv_name}' is not defined in configuration file.")
+        print(f"venv '{venv_name}' is not defined in configuration file.", file=sys.stderr)
         exit(4)
     launch_freefilesync(config, venv_config)

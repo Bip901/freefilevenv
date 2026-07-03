@@ -23,13 +23,11 @@ dependencies = [
     "pydantic>=2.12.0",
     "pydantic-xml>=2.18.0",
     "xmlpatcher>=1.0.3",
+    "windows-curses>=2.4.2; sys_platform == 'win32'",
 ]
 
 [dependency-groups]
-dev = [
-    "mypy>=1.18.2",
-    "ruff>=0.14.0",
-]
+dev = ["mypy>=1.18.2", "ruff>=0.14.0"]
 
 [project.scripts]
 freefilevenv = "freefilevenv:main"
