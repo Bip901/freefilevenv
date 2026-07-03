@@ -4,12 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from os.path import expandvars
 from pathlib import Path
-from typing import Self
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
+from typing import Self, override
 
 from pydantic_xml import BaseXmlModel, attr, element
 from xmlpatcher import patches as xmlpatches
@@ -108,3 +103,9 @@ class Config(BaseXmlModel, tag="config"):
                 )
             ],
         )
+
+    def resolve_freefilesync_path(self) -> Path:
+        freefilesync_path = shutil.which(self.freefilesync_path)
+        if freefilesync_path is None:
+            raise ValueError(f"Executable not found: {freefilesync_path}")
+        return Path(freefilesync_path)

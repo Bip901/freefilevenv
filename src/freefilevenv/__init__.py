@@ -1,6 +1,5 @@
 import argparse
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -14,6 +13,7 @@ from .config import Config, VenvConfig
 config_dir = Path(platformdirs.user_config_dir("freefilevenv", appauthor=False, roaming=True))
 
 VENV_NAME_REGEX = re.compile(r"^[a-zA-Z-_0-9]+$")
+NO_VENV_SENTRY = "<no venv - just launch FreeFileSync>"
 
 
 def _run_shell_command(command: str) -> None:
@@ -24,9 +24,7 @@ def _run_shell_command(command: str) -> None:
 
 
 def launch_freefilesync(config: Config, venv_config: VenvConfig) -> None:
-    freefilesync_path = shutil.which(config.freefilesync_path)
-    if freefilesync_path is None:
-        raise ValueError(f"Executable not found: {freefilesync_path}")
+    freefilesync_path = config.resolve_freefilesync_path()  # Resolve here to fail early
     freefilesync_appdata_dir = config.freefilesync_appdata_path or Path(
         platformdirs.user_config_dir("FreeFileSync", appauthor=False, roaming=True)
     )
@@ -88,26 +86,29 @@ def main() -> None:
         config_path.write_bytes(xml_bytes)
         print(f"Created config file {config_path}", file=sys.stderr)
         print("Please edit it and run again.", file=sys.stderr)
-        exit(1)
+        sys.exit(1)
 
     config = Config.from_xml(config_path.read_bytes())
     venv_name = args.venv or config.default_venv
     if venv_name is None:
         print("No --venv specified and no default_venv was given in the configuration file.", file=sys.stderr)
         available_names = [venv.name for venv in config.venv_configs]
-        if not available_names:
-            print("No venvs defined in the configuration file.", file=sys.stderr)
-            exit(2)
+        available_names.append(NO_VENV_SENTRY)
         print("Please select a venv:", file=sys.stderr)
         venv_name = tui.select_item(available_names)
         if venv_name is None:
-            exit(0)
+            return
+        if venv_name == NO_VENV_SENTRY:
+            subprocess.run([config.resolve_freefilesync_path()])
+            return
+
     if not VENV_NAME_REGEX.fullmatch(venv_name):
         print(f"venv name '{venv_name}' must match regex ${VENV_NAME_REGEX.pattern}")
-        exit(3)
+        sys.exit(3)
+
     try:
         venv_config = next(venv_config for venv_config in config.venv_configs if venv_config.name == venv_name)
     except StopIteration:
         print(f"venv '{venv_name}' is not defined in configuration file.", file=sys.stderr)
-        exit(4)
+        sys.exit(4)
     launch_freefilesync(config, venv_config)
