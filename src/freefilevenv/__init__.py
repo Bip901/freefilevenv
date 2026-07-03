@@ -97,6 +97,7 @@ def main() -> None:
         if not available_names:
             print("No venvs defined in the configuration file.", file=sys.stderr)
             exit(2)
+        print("Please select a venv:", file=sys.stderr)
         venv_name = tui.select_item(available_names)
         if venv_name is None:
             exit(0)

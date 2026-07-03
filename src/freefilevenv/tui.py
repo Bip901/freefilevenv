@@ -31,7 +31,7 @@ def _select_item(stdscr: curses.window, items: list[str], page_step: int = 5) ->
 
         if key in (curses.KEY_ENTER, 10, 13):
             return items[current_idx]
-        if key == 27:  # Escape key
+        if key in (ord("Q"), ord("q"), 27):  # Q or Escape key
             return None
         if key == curses.KEY_UP:
             current_idx = max(0, current_idx - 1)
