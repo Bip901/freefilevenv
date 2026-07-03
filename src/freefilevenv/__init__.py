@@ -31,7 +31,8 @@ def launch_freefilesync(config: Config, venv_config: VenvConfig) -> None:
         platformdirs.user_config_dir("FreeFileSync", appauthor=False, roaming=True)
     )
     global_settings = XMLDocument(freefilesync_appdata_dir / "GlobalSettings.xml")
-    global_settings.patch(*venv_config.global_settings_patches.to_xml_patches())
+    if venv_config.global_settings_patches:
+        global_settings.patch(*venv_config.global_settings_patches.to_xml_patches())
 
     venv_dir = config_dir / "venvs" / venv_config.name
     venv_dir.mkdir(parents=True, exist_ok=True)

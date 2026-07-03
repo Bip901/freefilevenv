@@ -67,8 +67,8 @@ class VenvConfig(BaseXmlModel, tag="venv"):
     """A shell command (pwsh for Windows, bash for Linux) to run prior to running FreeFileSync."""
     run_after: str | None = element(default=None)
     """A shell command (pwsh for Windows, bash for Linux) to run after running FreeFileSync."""
-    global_settings_patches: PatchList = element()
-    file_patches: list[FilePatch] = element()
+    global_settings_patches: PatchList | None = element(default=None)
+    file_patches: list[FilePatch] = element(default_factory=list)
 
 
 class Config(BaseXmlModel, tag="config"):
