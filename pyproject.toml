@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Bip901", email = "74911767+Bip901@users.noreply.github.com" },
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 classifiers = [
     "Topic :: System :: Filesystems",
     "Operating System :: OS Independent",
@@ -17,6 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
     "platformdirs>=4.5.0",
