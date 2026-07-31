@@ -56,9 +56,15 @@ class FilePatch(PatchList, tag="patch_file"):
     delete_on_shutdown: bool = attr(default=True)
 
 
+class RunBeforeCommand(BaseXmlModel):
+    command: str
+    keep_alive: bool = attr(default=False)
+    """If true, doesn't wait for the shell process to finish, and kills it when FreeFileSync is closed."""
+
+
 class VenvConfig(BaseXmlModel, tag="venv"):
     name: str = attr()
-    run_before: str | None = element(default=None)
+    run_before: RunBeforeCommand | None = element(default=None)
     """A shell command (pwsh for Windows, bash for Linux) to run prior to running FreeFileSync."""
     run_after: str | None = element(default=None)
     """A shell command (pwsh for Windows, bash for Linux) to run after running FreeFileSync."""

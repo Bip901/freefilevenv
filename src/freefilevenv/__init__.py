@@ -1,5 +1,7 @@
 import argparse
+import contextlib
 import re
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -16,11 +18,14 @@ VENV_NAME_REGEX = re.compile(r"^[a-zA-Z-_0-9]+$")
 NO_VENV_SENTRY = "<no venv - just launch FreeFileSync>"
 
 
-def _run_shell_command(command: str) -> None:
+def _get_shell_command_args(command: str) -> list[str]:
     if sys.platform == "win32":
-        subprocess.run(["pwsh", "-Command", command], check=True)
-    else:
-        subprocess.run(["bash", "-c", command], check=True)
+        return ["pwsh", "-Command", command]
+    return ["bash", "-c", command]
+
+
+def _run_shell_command(command: str) -> None:
+    subprocess.run(_get_shell_command_args(command), check=True)
 
 
 def launch_freefilesync(config: Config, venv_config: VenvConfig) -> None:
@@ -46,10 +51,14 @@ def launch_freefilesync(config: Config, venv_config: VenvConfig) -> None:
         print(f"Patching {original_path} -> {new_path}")
         Transformation(original_path, new_path, *file_patch.to_xml_patches()).apply()
 
+    run_before_context: contextlib.AbstractContextManager[object] = contextlib.nullcontext()
     if venv_config.run_before:
-        _run_shell_command(venv_config.run_before)
+        if venv_config.run_before.keep_alive:
+            run_before_context = subprocess.Popen(_get_shell_command_args(venv_config.run_before.command))
+        else:
+            _run_shell_command(venv_config.run_before.command)
 
-    with global_settings.save_to_temp_file() as modified_global_settings_path:
+    with run_before_context as proc, global_settings.save_to_temp_file() as modified_global_settings_path:
         print(f"Launching FreeFileSync with global settings from {modified_global_settings_path}")
         subprocess.run([freefilesync_path, modified_global_settings_path])
         modified_global_settings = XMLDocument(modified_global_settings_path)
@@ -57,6 +66,8 @@ def launch_freefilesync(config: Config, venv_config: VenvConfig) -> None:
         for file_patch in venv_config.file_patches:
             if file_patch.delete_on_shutdown:
                 (venv_dir / file_patch.new_path).unlink()
+        if proc:
+            proc.send_signal(signal.CTRL_C_EVENT)
 
     if venv_config.run_after:
         _run_shell_command(venv_config.run_after)
