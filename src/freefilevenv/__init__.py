@@ -58,16 +58,19 @@ def launch_freefilesync(config: Config, venv_config: VenvConfig) -> None:
         else:
             _run_shell_command(venv_config.run_before.command)
 
-    with run_before_context as proc, global_settings.save_to_temp_file() as modified_global_settings_path:
-        print(f"Launching FreeFileSync with global settings from {modified_global_settings_path}")
-        subprocess.run([freefilesync_path, modified_global_settings_path])
-        modified_global_settings = XMLDocument(modified_global_settings_path)
-        modified_global_settings.save_element("/FreeFileSync/MainDialog/ConfigPanel", config_panel_path)
-        for file_patch in venv_config.file_patches:
-            if file_patch.delete_on_shutdown:
-                (venv_dir / file_patch.new_path).unlink()
-        if proc:
-            proc.send_signal(signal.CTRL_C_EVENT)
+    try:
+        with run_before_context as proc, global_settings.save_to_temp_file() as modified_global_settings_path:
+            print(f"Launching FreeFileSync with global settings from {modified_global_settings_path}")
+            subprocess.run([freefilesync_path, modified_global_settings_path])
+            modified_global_settings = XMLDocument(modified_global_settings_path)
+            modified_global_settings.save_element("/FreeFileSync/MainDialog/ConfigPanel", config_panel_path)
+            for file_patch in venv_config.file_patches:
+                if file_patch.delete_on_shutdown:
+                    (venv_dir / file_patch.new_path).unlink()
+            if proc:
+                proc.send_signal(signal.CTRL_C_EVENT)
+    except KeyboardInterrupt:
+        print("SIGINT")
 
     if venv_config.run_after:
         _run_shell_command(venv_config.run_after)
