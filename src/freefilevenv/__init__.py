@@ -4,6 +4,7 @@ import re
 import signal
 import subprocess
 import sys
+from collections.abc import Generator
 from pathlib import Path
 
 import platformdirs
@@ -26,6 +27,35 @@ def _get_shell_command_args(command: str) -> list[str]:
 
 def _run_shell_command(command: str) -> None:
     subprocess.run(_get_shell_command_args(command), check=True)
+
+
+@contextlib.contextmanager
+def _create_run_before_context(
+    venv_config: VenvConfig,
+) -> Generator[subprocess.Popen[bytes] | None]:
+    if not venv_config.run_before:
+        yield None
+        return
+    if not venv_config.run_before.keep_alive:
+        _run_shell_command(venv_config.run_before.command)
+        yield None
+        return
+    args = _get_shell_command_args(venv_config.run_before.command)
+    if venv_config.run_before.wait_for_stderr:
+        proc = subprocess.Popen(args)
+    else:
+        proc = subprocess.Popen(args, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        assert proc.stderr is not None
+        proc.stderr.read(1)
+        proc.stderr.close()
+    try:
+        yield proc
+    finally:
+        if proc.stdin is None:
+            proc.send_signal(signal.CTRL_C_EVENT)
+        else:
+            proc.stdin.close()
+            proc.wait()
 
 
 def launch_freefilesync(config: Config, venv_config: VenvConfig) -> None:
@@ -51,15 +81,11 @@ def launch_freefilesync(config: Config, venv_config: VenvConfig) -> None:
         print(f"Patching {original_path} -> {new_path}")
         Transformation(original_path, new_path, *file_patch.to_xml_patches()).apply()
 
-    run_before_context: contextlib.AbstractContextManager[object] = contextlib.nullcontext()
-    if venv_config.run_before:
-        if venv_config.run_before.keep_alive:
-            run_before_context = subprocess.Popen(_get_shell_command_args(venv_config.run_before.command))
-        else:
-            _run_shell_command(venv_config.run_before.command)
-
     try:
-        with run_before_context as proc, global_settings.save_to_temp_file() as modified_global_settings_path:
+        with (
+            _create_run_before_context(venv_config),
+            global_settings.save_to_temp_file() as modified_global_settings_path,
+        ):
             print(f"Launching FreeFileSync with global settings from {modified_global_settings_path}")
             subprocess.run([freefilesync_path, modified_global_settings_path])
             modified_global_settings = XMLDocument(modified_global_settings_path)
@@ -67,8 +93,6 @@ def launch_freefilesync(config: Config, venv_config: VenvConfig) -> None:
             for file_patch in venv_config.file_patches:
                 if file_patch.delete_on_shutdown:
                     (venv_dir / file_patch.new_path).unlink()
-            if proc:
-                proc.send_signal(signal.CTRL_C_EVENT)
     except KeyboardInterrupt:
         print("SIGINT")
 

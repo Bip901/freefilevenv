@@ -60,6 +60,12 @@ class RunBeforeCommand(BaseXmlModel):
     command: str
     keep_alive: bool = attr(default=False)
     """If true, doesn't wait for the shell process to finish, and kills it when FreeFileSync is closed."""
+    wait_for_stderr: bool = attr(default=False)
+    """
+    If true, waits for the shell process to write anything to stderr before starting FreeFileSync,
+    and closes the processe's stdin to signal it to stop.
+    This only has an effect if keep_alive is true, because otherwise we wait for the process to exit entirely.
+    """
 
 
 class VenvConfig(BaseXmlModel, tag="venv"):
