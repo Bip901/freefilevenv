@@ -1,5 +1,7 @@
 import curses
 
+PADENTER = 459
+
 
 def _select_item(stdscr: curses.window, items: list[str], page_step: int = 5) -> str | None:
     if not items:
@@ -29,7 +31,7 @@ def _select_item(stdscr: curses.window, items: list[str], page_step: int = 5) ->
         stdscr.refresh()
         key: int = stdscr.getch()
 
-        if key in (curses.KEY_ENTER, 10, 13):
+        if key in (curses.KEY_ENTER, 10, 13, PADENTER):
             return items[current_idx]
         if key in (ord("Q"), ord("q"), 27):  # Q or Escape key
             return None
