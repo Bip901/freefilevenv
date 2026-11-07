@@ -42,12 +42,18 @@ def _create_run_before_context(
         return
     args = _get_shell_command_args(venv_config.run_before.command)
     if venv_config.run_before.wait_for_stderr:
-        proc = subprocess.Popen(args)
-    else:
         proc = subprocess.Popen(args, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
         assert proc.stderr is not None
-        proc.stderr.read(1)
+        if (first_char := proc.stderr.read(1)) != b"#":
+            msg = f"Unexpected stderr char: {first_char}."
+            print(msg, file=sys.stderr)
+            sys.stderr.buffer.write(first_char)
+            sys.stderr.buffer.write(proc.stderr.read())
+            proc.wait()
+            raise ValueError(msg)
         proc.stderr.close()
+    else:
+        proc = subprocess.Popen(args)
     try:
         yield proc
     finally:
